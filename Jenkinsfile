@@ -20,14 +20,7 @@ pipeline {
         stage('Determine Branch Name') {
             steps {
                 script {
-                    // Try to get the branch name from environment variables
-                    env.BRANCH_NAME = env.BRANCH_NAME ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-
-                    if (env.BRANCH_NAME == 'HEAD') {
-                        // Try to get the branch name using git show command
-                        env.BRANCH_NAME = sh(script: 'git show -s --pretty=%d HEAD | grep -oE "[^/]+/[^/]+/[^),]+" | head -n 1 | cut -d/ -f2', returnStdout: true).trim()
-                    }
-
+                    env.BRANCH_NAME = sh(script: 'git symbolic-ref --short HEAD || git describe --tags --exact-match || git rev-parse --short HEAD', returnStdout: true).trim()
                     echo "Current branch: ${env.BRANCH_NAME}"
                 }
             }
@@ -123,6 +116,19 @@ pipeline {
             }
         }
         */
+        stage('Delete Local Docker Images') {
+            steps {
+                script {
+                    def imagesToDelete = "${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME}"
+                    if (env.NEXUS_IMAGE_NAME) {
+                        imagesToDelete += " ${env.NEXUS_IMAGE_NAME}"
+                    }
+                    echo "Deleting Local Docker Images: ${imagesToDelete}"
+                    sh "docker rmi ${imagesToDelete}"
+                }
+                echo "Local Docker Images Deletion Completed"
+            }
+        }
         stage('Deploy app to dev env') {
             when {
                 branch 'dev' // Only deploy on the 'dev' branch
@@ -153,19 +159,6 @@ pipeline {
                 failure {
                     echo "Deployment to dev environment failed. Check logs for details."
                 }
-            }
-        }
-        stage('Delete Local Docker Images') {
-            steps {
-                script {
-                    def imagesToDelete = "${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME}"
-                    if (env.NEXUS_IMAGE_NAME) {
-                        imagesToDelete += " ${env.NEXUS_IMAGE_NAME}"
-                    }
-                    echo "Deleting Local Docker Images: ${imagesToDelete}"
-                    sh "docker rmi ${imagesToDelete}"
-                }
-                echo "Local Docker Images Deletion Completed"
             }
         }
     }
