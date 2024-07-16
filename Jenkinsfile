@@ -17,6 +17,13 @@ pipeline {
     }
 
     stages {
+        stage('Print Branch Name') {
+            steps {
+                script {
+                    echo "Current branch: ${env.BRANCH_NAME}"
+                }
+            }
+        }
         stage('Code Compilation') {
             steps {
                 echo 'Code Compilation is In Progress!'
@@ -108,6 +115,13 @@ pipeline {
             }
         }
         */
+        stage('Delete Local Docker Images') {
+            steps {
+                echo "Deleting Local Docker Images: ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
+                sh "docker rmi ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
+                echo "Local Docker Images Deletion Completed"
+            }
+        }
         stage('Deploy app to dev env') {
             when {
                 branch 'dev' // Only deploy on the 'dev' branch
@@ -118,7 +132,7 @@ pipeline {
                     def versionedImage = "dev-booking-v.1.${BUILD_NUMBER}"
 
                     // Replace <latest> with the versioned image tag in the YAML file
-                    sh "sed -i '' -e 's/<latest>/${versionedImage}/g' ${yamlFile}"
+                    sh "sed -i 's/<latest>/${versionedImage}/g' ${yamlFile}"
 
                     // Deploy to Kubernetes
                     kubernetesDeploy(
@@ -138,13 +152,6 @@ pipeline {
                 failure {
                     echo "Deployment to dev environment failed. Check logs for details."
                 }
-            }
-        }
-        stage('Delete Local Docker Images') {
-            steps {
-                echo "Deleting Local Docker Images: ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
-                sh "docker rmi ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
-                echo "Local Docker Images Deletion Completed"
             }
         }
     }
