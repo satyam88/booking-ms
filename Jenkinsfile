@@ -5,7 +5,6 @@ pipeline {
         IMAGE_NAME = "satyam88/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
         ECR_IMAGE_NAME = "533267238276.dkr.ecr.ap-south-1.amazonaws.com/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
         // NEXUS_IMAGE_NAME = "3.110.216.145:8085/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
-        KUBE_CONFIG = credentials('my-kubeconfig') // Example of fetching Kubernetes config from Jenkins credentials
     }
 
     options {
@@ -95,14 +94,9 @@ pipeline {
                     // Replace <latest> with the versioned image tag in the YAML file
                     sh "sed -i 's/<latest>/${versionedImage}/g' ${yamlFile}"
 
-                    // Deploy to Kubernetes using KUBE_CONFIG
-                    withKubeConfig([credentialsId: 'my-kubeconfig', serverUrl: 'https://B4D214F35A81DAEFFFDA4DC4537B1007.gr7.ap-south-1.eks.amazonaws.com']) {
-                        kubernetesDeploy(
-                            configs: yamlFile,
-                            onFailure: 'abort', // Abort pipeline on deployment failure
-                            showToken: true, // Display Kubernetes token for debug
-                            verifySSL: false // Disable SSL verification (if needed)
-                        )
+                    // Example deployment using kubectl directly
+                    withCredentials([kubeconfig(credentialsId: 'my-kubeconfig', variable: 'KUBECONFIG')]) {
+                        sh "kubectl apply -f ${yamlFile} --kubeconfig=${KUBECONFIG}"
                     }
                 }
             }
