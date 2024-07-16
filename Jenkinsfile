@@ -17,9 +17,13 @@ pipeline {
     }
 
     stages {
-        stage('Print Branch Name') {
+        stage('Determine Branch Name') {
             steps {
                 script {
+                    // Fallback to git command if BRANCH_NAME is not set
+                    if (!env.BRANCH_NAME) {
+                        env.BRANCH_NAME = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    }
                     echo "Current branch: ${env.BRANCH_NAME}"
                 }
             }
@@ -115,13 +119,6 @@ pipeline {
             }
         }
         */
-        stage('Delete Local Docker Images') {
-            steps {
-                echo "Deleting Local Docker Images: ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
-                sh "docker rmi ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
-                echo "Local Docker Images Deletion Completed"
-            }
-        }
         stage('Deploy app to dev env') {
             when {
                 branch 'dev' // Only deploy on the 'dev' branch
@@ -152,6 +149,19 @@ pipeline {
                 failure {
                     echo "Deployment to dev environment failed. Check logs for details."
                 }
+            }
+        }
+        stage('Delete Local Docker Images') {
+            steps {
+                script {
+                    def imagesToDelete = "${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME}"
+                    if (env.NEXUS_IMAGE_NAME) {
+                        imagesToDelete += " ${env.NEXUS_IMAGE_NAME}"
+                    }
+                    echo "Deleting Local Docker Images: ${imagesToDelete}"
+                    sh "docker rmi ${imagesToDelete}"
+                }
+                echo "Local Docker Images Deletion Completed"
             }
         }
     }
