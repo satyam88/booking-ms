@@ -25,22 +25,7 @@ pipeline {
                 echo 'Code Compilation is Completed Successfully!'
             }
         }
-        /*
-        stage('Sonarqube Code Quality') {
-            environment {
-                scannerHome = tool 'sonarqube-scanner'
-            }
-            steps {
-                withSonarQubeEnv('sonar-server') {
-                    sh "${scannerHome}/bin/sonar-scanner"
-                    sh 'mvn sonar:sonar'
-                }
-                timeout(time: 10, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
-        */
+
         stage('Code QA Execution') {
             steps {
                 echo 'JUnit Test Case Check in Progress!'
@@ -48,6 +33,7 @@ pipeline {
                 echo 'JUnit Test Case Check Completed!'
             }
         }
+
         stage('Code Package') {
             steps {
                 echo 'Creating WAR Artifact'
@@ -55,6 +41,7 @@ pipeline {
                 echo 'Artifact Creation Completed'
             }
         }
+
         stage('Building & Tag Docker Image') {
             steps {
                 echo "Starting Building Docker Image: ${env.IMAGE_NAME}"
@@ -62,15 +49,7 @@ pipeline {
                 echo 'Docker Image Build Completed'
             }
         }
-        /*
-        stage('Docker Image Scanning') {
-            steps {
-                echo 'Docker Image Scanning Started'
-                // Add actual scanning steps here
-                echo 'Docker Image Scanning Completed'
-            }
-        }
-        */
+
         stage('Docker Push to Docker Hub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'DOCKER_HUB_CRED', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
@@ -81,6 +60,7 @@ pipeline {
                 }
             }
         }
+
         stage('Docker Image Push to Amazon ECR') {
             steps {
                 echo "Tagging Docker Image for ECR: ${env.ECR_IMAGE_NAME}"
@@ -94,21 +74,7 @@ pipeline {
                 }
             }
         }
-        /*
-        stage('Upload the Docker Image to Nexus') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'nexus-credentials', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                        sh 'docker login http://3.110.216.145:8085/repository/booking-ms/ -u admin -p ${PASSWORD}'
-                        echo "Push Docker Image to Nexus: In Progress"
-                        sh "docker tag ${env.IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
-                        sh "docker push ${env.NEXUS_IMAGE_NAME}"
-                        echo "Push Docker Image to Nexus: Completed"
-                    }
-                }
-            }
-        }
-        */
+
         stage('Delete Local Docker Images') {
             steps {
                 script {
@@ -119,6 +85,7 @@ pipeline {
                 }
             }
         }
+
         stage('Deploy app to dev env') {
             steps {
                 script {
@@ -128,15 +95,15 @@ pipeline {
                     // Replace <latest> with the versioned image tag in the YAML file
                     sh "sed -i 's/<latest>/${versionedImage}/g' ${yamlFile}"
 
-                    // Deploy to Kubernetes
-                    kubernetesDeploy(
-                        configs: yamlFile,
-                        kubeconfigId: 'my-kubeconfig',
-                        kubeconfig: KUBE_CONFIG,
-                        onFailure: 'abort', // Abort pipeline on deployment failure
-                        showToken: true, // Display Kubernetes token for debug
-                        verifySSL: false // Disable SSL verification (if needed)
-                    )
+                    // Deploy to Kubernetes using KUBE_CONFIG
+                    withKubeConfig([credentialsId: 'kubeconfig-id', serverUrl: 'https://B4D214F35A81DAEFFFDA4DC4537B1007.gr7.ap-south-1.eks.amazonaws.com']) {
+                        kubernetesDeploy(
+                            configs: yamlFile,
+                            onFailure: 'abort', // Abort pipeline on deployment failure
+                            showToken: true, // Display Kubernetes token for debug
+                            verifySSL: false // Disable SSL verification (if needed)
+                        )
+                    }
                 }
             }
             post {
