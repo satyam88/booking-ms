@@ -91,11 +91,12 @@ pipeline {
         stage('Deploy app to dev env') {
             when {
                 expression {
-                    currentBuild.rawBuild.branchName == 'dev'
+                    env.BRANCH_NAME == 'dev'
                 }
             }
             steps {
                 script {
+                    echo "Current Branch: ${env.BRANCH_NAME}"
                     def devenvManifest = 'kubernetes/dev/'
                     def yamlFile = 'kubernetes/dev/05-deployment.yaml'
                     sh "sed -i 's/<latest>/dev-booking-v.1.${BUILD_NUMBER}/g' ${yamlFile}"
