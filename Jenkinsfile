@@ -4,7 +4,9 @@ pipeline {
     environment {
         IMAGE_NAME = "satyam88/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
         ECR_IMAGE_NAME = "533267238276.dkr.ecr.ap-south-1.amazonaws.com/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
-        // NEXUS_IMAGE_NAME = "3.110.216.145:8085/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
+        AWS_ACCOUNT_ID = "533267238276"
+        REGION = "ap-south-1"
+        ECR_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
     }
 
     options {
@@ -66,7 +68,7 @@ pipeline {
                 sh "docker tag ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME}"
                 echo "Docker Image Tagging Completed"
 
-                withDockerRegistry([credentialsId: 'ecr:ap-south-1:ecr-credentials', url: "https://533267238276.dkr.ecr.ap-south-1.amazonaws.com"]) {
+                withDockerRegistry([credentialsId: 'ecr:ap-south-1:ecr-credentials', url: "https://${ECR_URL}"]) {
                     echo "Pushing Docker Image to ECR: ${env.ECR_IMAGE_NAME}"
                     sh "docker push ${env.ECR_IMAGE_NAME}"
                     echo "Docker Image Push to ECR Completed"
@@ -77,40 +79,38 @@ pipeline {
         stage('Delete Local Docker Images') {
             steps {
                 script {
-                    echo "Deleting Local Docker Images: ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
+                    echo "Deleting Local Docker Images: ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME}"
                     // Ensure each image name is checked for null before attempting deletion
-                    sh "docker rmi ${env.IMAGE_NAME ?: ''} ${env.ECR_IMAGE_NAME ?: ''} ${env.NEXUS_IMAGE_NAME ?: ''}"
+                    sh "docker rmi ${env.IMAGE_NAME} || true"
+                    sh "docker rmi ${env.ECR_IMAGE_NAME} || true"
                     echo "Local Docker Images Deletion Completed"
                 }
             }
         }
 
         stage('Deploy app to dev env') {
+            when {
+                expression {
+                    currentBuild.rawBuild.branchName == 'dev'
+                }
+            }
             steps {
                 script {
+                    def devenvManifest = 'kubernetes/dev/'
                     def yamlFile = 'kubernetes/dev/05-deployment.yaml'
-                    def versionedImage = "dev-booking-v.1.${BUILD_NUMBER}"
-
-                    // Replace <latest> with the versioned image tag in the YAML file
-                    sh "sed -i 's/<latest>/${versionedImage}/g' ${yamlFile}"
-
-                    // Example of fetching kubeconfig content and using it
-                    def kubeconfigContent = credentials('my-kubeconfig')
-
-                    writeFile file: 'kubeconfig', text: kubeconfigContent
-
-                    // Deploy to Kubernetes using the kubeconfig file
-                    sh "kubectl apply -f ${yamlFile} --kubeconfig=kubeconfig"
+                    sh "sed -i 's/<latest>/dev-booking-v.1.${BUILD_NUMBER}/g' ${yamlFile}"
+                    sh "kubectl apply -f ${devenvManifest}"
                 }
             }
-            post {
-                success {
-                    echo "Deployment to dev environment completed successfully"
-                }
-                failure {
-                    echo "Deployment to dev environment failed. Check logs for details."
-                }
-            }
+        }
+    }
+
+    post {
+        success {
+            echo "Deployment to dev environment completed successfully"
+        }
+        failure {
+            echo "Deployment to dev environment failed. Check logs for details."
         }
     }
 }
