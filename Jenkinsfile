@@ -5,6 +5,7 @@ pipeline {
         IMAGE_NAME = "satyam88/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
         ECR_IMAGE_NAME = "533267238276.dkr.ecr.ap-south-1.amazonaws.com/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
         // NEXUS_IMAGE_NAME = "3.110.216.145:8085/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
+        BRANCH_NAME = ""
     }
 
     options {
@@ -20,7 +21,8 @@ pipeline {
         stage('Determine Branch Name') {
             steps {
                 script {
-                    env.BRANCH_NAME = sh(script: 'git symbolic-ref --short HEAD || git describe --tags --exact-match || git rev-parse --short HEAD', returnStdout: true).trim()
+                    def branchNameFromGit = sh(returnStdout: true, script: 'git symbolic-ref --short HEAD || git describe --tags --exact-match || git rev-parse --short HEAD').trim()
+                    env.BRANCH_NAME = branchNameFromGit ?: 'HEAD'
                     echo "Current branch: ${env.BRANCH_NAME}"
                 }
             }
@@ -131,7 +133,7 @@ pipeline {
         }
         stage('Deploy app to dev env') {
             when {
-                branch 'dev' // Only deploy on the 'dev' branch
+                expression { env.BRANCH_NAME == 'dev' }
             }
             steps {
                 script {
