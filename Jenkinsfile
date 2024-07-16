@@ -99,7 +99,7 @@ pipeline {
                     def devenvManifest = 'kubernetes/dev/'
                     def yamlFile = 'kubernetes/dev/05-deployment.yaml'
                     sh "sed -i 's/<latest>/dev-booking-v.1.${BUILD_NUMBER}/g' ${yamlFile}"
-                    sh "kubectl apply -f ${devenvManifest}"
+                    kubernetesDeploy(configs: 'kubernetes/dev/*.yaml', kubeconfigId: 'k8s-credentials')
                 }
             }
         }
