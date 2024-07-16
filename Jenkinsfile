@@ -5,7 +5,6 @@ pipeline {
         IMAGE_NAME = "satyam88/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
         ECR_IMAGE_NAME = "533267238276.dkr.ecr.ap-south-1.amazonaws.com/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
         // NEXUS_IMAGE_NAME = "3.110.216.145:8085/booking-ms:dev-booking-ms-v.1.${env.BUILD_NUMBER}"
-        BRANCH_NAME = ""
     }
 
     options {
@@ -18,15 +17,6 @@ pipeline {
     }
 
     stages {
-        stage('Determine Branch Name') {
-            steps {
-                script {
-                    def branchNameFromGit = sh(returnStdout: true, script: 'git symbolic-ref --short HEAD || git describe --tags --exact-match || git rev-parse --short HEAD').trim()
-                    env.BRANCH_NAME = branchNameFromGit ?: 'HEAD'
-                    echo "Current branch: ${env.BRANCH_NAME}"
-                }
-            }
-        }
         stage('Code Compilation') {
             steps {
                 echo 'Code Compilation is In Progress!'
@@ -120,21 +110,12 @@ pipeline {
         */
         stage('Delete Local Docker Images') {
             steps {
-                script {
-                    def imagesToDelete = "${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME}"
-                    if (env.NEXUS_IMAGE_NAME) {
-                        imagesToDelete += " ${env.NEXUS_IMAGE_NAME}"
-                    }
-                    echo "Deleting Local Docker Images: ${imagesToDelete}"
-                    sh "docker rmi ${imagesToDelete}"
-                }
+                echo "Deleting Local Docker Images: ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
+                sh "docker rmi ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
                 echo "Local Docker Images Deletion Completed"
             }
         }
         stage('Deploy app to dev env') {
-            when {
-                expression { env.BRANCH_NAME == 'dev' }
-            }
             steps {
                 script {
                     def yamlFile = 'kubernetes/dev/05-deployment.yaml'
