@@ -94,16 +94,13 @@ pipeline {
                     // Replace <latest> with the versioned image tag in the YAML file
                     sh "sed -i 's/<latest>/${versionedImage}/g' ${yamlFile}"
 
-                    // Example of fetching kubeconfig from Jenkins credentials and applying deployment
-                    withCredentials([usernamePassword(credentialsId: 'my-kubeconfig', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                        def kubeconfigContent = sh(script: 'echo $USERNAME:$PASSWORD', returnStdout: true).trim()
+                    // Example of fetching kubeconfig content and using it
+                    def kubeconfigContent = credentials('my-kubeconfig')
 
-                        // Save kubeconfig content to a file
-                        writeFile file: 'kubeconfig', text: kubeconfigContent
+                    writeFile file: 'kubeconfig', text: kubeconfigContent
 
-                        // Deploy to Kubernetes using the kubeconfig file
-                        sh "kubectl apply -f ${yamlFile} --kubeconfig=kubeconfig"
-                    }
+                    // Deploy to Kubernetes using the kubeconfig file
+                    sh "kubectl apply -f ${yamlFile} --kubeconfig=kubeconfig"
                 }
             }
             post {
