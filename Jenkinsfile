@@ -96,7 +96,7 @@ pipeline {
                     sh "sed -i 's/<latest>/${versionedImage}/g' ${yamlFile}"
 
                     // Deploy to Kubernetes using KUBE_CONFIG
-                    withKubeConfig([credentialsId: 'kubeconfig-id', serverUrl: 'https://B4D214F35A81DAEFFFDA4DC4537B1007.gr7.ap-south-1.eks.amazonaws.com']) {
+                    withKubeConfig([credentialsId: 'my-kubeconfig', serverUrl: 'https://B4D214F35A81DAEFFFDA4DC4537B1007.gr7.ap-south-1.eks.amazonaws.com']) {
                         kubernetesDeploy(
                             configs: yamlFile,
                             onFailure: 'abort', // Abort pipeline on deployment failure
