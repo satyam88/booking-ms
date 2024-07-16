@@ -87,11 +87,15 @@ pipeline {
                 }
             }
         }
-
+        stage('Debug Branch Name') {
+            steps {
+               echo "Current Branch: ${env.BRANCH_NAME}"
+            }
+        }
         stage('Deploy app to dev env') {
             when {
                 expression {
-                    env.BRANCH_NAME == 'dev'
+                    env.GIT_BRANCH == 'origin/dev'
                 }
             }
             steps {
