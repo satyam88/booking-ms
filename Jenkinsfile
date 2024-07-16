@@ -110,9 +110,12 @@ pipeline {
         */
         stage('Delete Local Docker Images') {
             steps {
-                echo "Deleting Local Docker Images: ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
-                sh "docker rmi ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
-                echo "Local Docker Images Deletion Completed"
+                script {
+                    echo "Deleting Local Docker Images: ${env.IMAGE_NAME} ${env.ECR_IMAGE_NAME} ${env.NEXUS_IMAGE_NAME}"
+                    // Ensure each image name is checked for null before attempting deletion
+                    sh "docker rmi ${env.IMAGE_NAME ?: ''} ${env.ECR_IMAGE_NAME ?: ''} ${env.NEXUS_IMAGE_NAME ?: ''}"
+                    echo "Local Docker Images Deletion Completed"
+                }
             }
         }
         stage('Deploy app to dev env') {
