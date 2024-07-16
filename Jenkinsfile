@@ -20,10 +20,14 @@ pipeline {
         stage('Determine Branch Name') {
             steps {
                 script {
-                    // Fallback to git command if BRANCH_NAME is not set
-                    if (!env.BRANCH_NAME) {
-                        env.BRANCH_NAME = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    // Try to get the branch name from environment variables
+                    env.BRANCH_NAME = env.BRANCH_NAME ?: sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+
+                    if (env.BRANCH_NAME == 'HEAD') {
+                        // Try to get the branch name using git show command
+                        env.BRANCH_NAME = sh(script: 'git show -s --pretty=%d HEAD | grep -oE "[^/]+/[^/]+/[^),]+" | head -n 1 | cut -d/ -f2', returnStdout: true).trim()
                     }
+
                     echo "Current branch: ${env.BRANCH_NAME}"
                 }
             }
